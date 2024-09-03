@@ -1,0 +1,82 @@
+﻿@page "/cancel"
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpClientFactory
+@using CredicardAPI.Models
+
+<h3>Cancelar Transação</h3>
+
+<EditForm Model="@cancelRequest" OnValidSubmit="HandleCancel">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group mb-3">
+        <label for="transactionId">ID da transação:</label>
+        <InputText id="transactionId" class="form-control" @bind-Value="cancelRequest.TransactionId" />
+    </div>
+    <div class="form-group mb-3">
+        <label for="amount">Valor da transação:</label>
+        <InputNumber id="amount" class="form-control" @bind-Value="cancelRequest.Amount" />
+    </div>
+    <button type="submit" class="btn btn-primary mb-3">Cancelar</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">
+        @successMessage
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">
+        @errorMessage
+    </div>
+}
+
+@code {
+    private CancelRequest cancelRequest = new CancelRequest();
+    private string successMessage;
+    private string errorMessage;
+
+    private async Task HandleCancel()
+    {
+        if (string.IsNullOrWhiteSpace(cancelRequest.TransactionId))
+        {
+            errorMessage = "ID da transação é obrigatório.";
+            return;
+        }
+
+        if (cancelRequest.Amount < 0)
+        {
+            errorMessage = "Valor deve ser zero ou maior que zero";
+            return;
+        }
+
+        var client = HttpClientFactory.CreateClient("API");
+
+        try
+        {
+            var url = $"api/Transaction/cancel/{cancelRequest.TransactionId}?amount={cancelRequest.Amount}";
+
+            var response = await client.PutAsync(url, null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Transação cancelada com sucesso!";
+                errorMessage = null;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                successMessage = null;
+                errorMessage = $"Cancelamento falhou {response.StatusCode}: {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            successMessage = null;
+            errorMessage = "Erro: " + ex.Message;
+        }
+    }
+}

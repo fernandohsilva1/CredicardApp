@@ -1,0 +1,110 @@
+﻿@page "/transaction"
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpClientFactory
+@using CredicardAPI.Models
+
+<h3>Preencha o formulário e realize sua transação</h3>
+
+<EditForm Model="@transaction" OnValidSubmit="HandleSubmit" FormName="TransactionForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group mb-3">
+        <label for="cardNumber">Número do cartão:</label>
+        <InputText id="cardNumber" class="form-control" @bind-Value="transaction.CardNumber" />
+    </div>
+    <div class="form-group mb-3">
+        <label for="cardBrand">Bandeira do cartão:</label>
+        <InputText id="cardBrand" class="form-control" @bind-Value="transaction.CardBrand" />
+    </div>
+    <div class="form-group mb-3">
+        <label for="amount">Valor da transação:</label>
+        <InputNumber id="amount" class="form-control" @bind-Value="transaction.Amount" />
+    </div>
+    <div class="form-group mb-3">
+        <label for="cvc">CVC do cartão:</label>
+        <InputText id="cvc" class="form-control" @bind-Value="transaction.Cvc" />
+    </div>
+    <div class="form-group mb-3">
+        <label for="transactionType">Tipo da transação:</label>
+        <InputText id="transactionType" class="form-control" @bind-Value="transaction.TransactionType" />
+    </div>
+    <button type="submit" class="btn btn-primary mb-3">Enviar</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">
+        @successMessage
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">
+        @errorMessage
+    </div>
+}
+
+@code {
+    private Transaction transaction = new Transaction();
+    private string successMessage;
+    private string errorMessage;
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(transaction.CardNumber))
+        {
+            errorMessage = "Número do cartão é obrigatório";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(transaction.CardBrand))
+        {
+            errorMessage = "Bandeira do cartão é obrigatório";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(transaction.Cvc))
+        {
+            errorMessage = "Código do cartão é necessário";
+            return;
+        }
+
+        if (transaction.Amount <= 0)
+        {
+            errorMessage = "Valor deve ser maior que zero";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(transaction.TransactionType))
+        {
+            errorMessage = "O tipo de transação é necessário";
+            return;
+        }
+
+        var client = HttpClientFactory.CreateClient("API");
+
+        try
+        {
+            var response = await client.PostAsJsonAsync("api/Transaction/create", transaction);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<CreateTransactionResponse>();
+                successMessage = $"Transação realizada com sucesso! Seu ID da transação é: {result.TransactionId}";
+                errorMessage = null;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                successMessage = null;
+                errorMessage = $"Transação falhou {response.StatusCode}: {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            successMessage = null;
+            errorMessage = "Erro: " + ex.Message;
+        }
+    }
+}

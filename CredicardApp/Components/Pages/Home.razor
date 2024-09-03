@@ -1,0 +1,84 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@inject IHttpClientFactory HttpClientFactory
+@using CredicardAPI.Models
+
+<h3>Capturar Transação</h3>
+
+<EditForm Model="@captureRequest" OnValidSubmit="HandleCapture">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group mb-3">
+        <label for="transactionId">ID da transação:</label>
+        <InputText id="transactionId" class="form-control" @bind-Value="captureRequest.TransactionId" />
+    </div>
+    <div class="form-group mb-3">
+        <label for="amount mb-3">Valor da transação:</label>
+        <InputNumber id="amount" class="form-control" @bind-Value="captureRequest.Amount" />
+    </div>
+    <button type="submit" class="btn btn-primary mb-3">Enviar</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success">
+        @successMessage
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">
+        @errorMessage
+    </div>
+}
+
+@code {
+    private CaptureRequest captureRequest = new CaptureRequest();
+    private string successMessage;
+    private string errorMessage;
+
+    private async Task HandleCapture()
+    {
+        if (string.IsNullOrWhiteSpace(captureRequest.TransactionId))
+        {
+            errorMessage = "ID da transação é obrigatório.";
+            return;
+        }
+
+        if (captureRequest.Amount <= 0)
+        {
+            errorMessage = "Valor deve ser maior que zero.";
+            return;
+        }
+
+        var client = HttpClientFactory.CreateClient("API");
+
+        try
+        {
+            var url = $"api/Transaction/capture/{captureRequest.TransactionId}?amount={captureRequest.Amount}";
+
+            var response = await client.PutAsync(url, null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadAsStringAsync();
+                successMessage = "Captura concluída com sucesso!";
+                errorMessage = null;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                successMessage = null;
+                errorMessage = $"Captura falhou {response.StatusCode}: {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            successMessage = null;
+            errorMessage = "Erro: " + ex.Message;
+        }
+    }
+
+}

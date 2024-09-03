@@ -1,0 +1,15 @@
+@CredicardAPI_HostAddress = https://localhost:7152
+
+###Testando a Criação de Transação
+POST {{CredicardAPI_HostAddress}}/api/Transaction/create
+Content-Type: application/json
+
+{
+  "CardNumber": "4111111111111111",
+  "cardBrand": "Visa",
+  "amount": 100.00,
+  "cvc": "123",
+  "transactionType": "Purchase",
+  "transactionId": "1234561787"
+}
+
